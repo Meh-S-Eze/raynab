@@ -1,3 +1,15 @@
+# Raynab - Fork Project
+
+This is a fork of the [Raynab extension](https://github.com/raycast/extensions/tree/8d6754a2f29c2bf1f2838b10125e575f14a0447f/extensions/raynab) from the Raycast Extensions repository. 
+
+## Project Intent
+
+I'm working on refactoring this extension using agentic AI assistance to convert it into a Model-Controller-Presenter (MCP) architecture. This refactoring project aims to improve code organization, maintainability, and extensibility while preserving all existing functionality.
+
+The refactoring process is being performed entirely with the assistance of agentic AI tools, showcasing how modern AI can help transform and modernize existing codebases.
+
+---
+
 # Raynab
 
 ![Cover](./media/raynab-cover.jpg)
@@ -10,16 +22,16 @@ Raynab is an extension allowing YNAB users to manage one or multiple budgets dir
 
 ## Getting Started
 
-You will need a YNAB account to use this extension. If you don’t you can [start a new trial](https://www.youneedabudget.com/).
+You will need a YNAB account to use this extension. If you don't you can [start a new trial](https://www.youneedabudget.com/).
 
 ### Credentials
 
 Raynab is powered by the [YNAB API](https://api.youneedabudget.com/). In order for the extension to work, it needs to have access to your account via your Personal Access Token. Here are the steps necessary to obtain them:
 
 1. [Sign in to the YNAB web app](https://api.youneedabudget.com/) and get to the "**Account Settings**".
-2. Locate and navigate to the “**Developer Settings**” page.
-3. Click on the “New Token” section button under the “**Personal Access Tokens**” section.
-4. Enter your password and click “**Generate**” to get an access token.
+2. Locate and navigate to the "**Developer Settings**" page.
+3. Click on the "New Token" section button under the "**Personal Access Tokens**" section.
+4. Enter your password and click "**Generate**" to get an access token.
 5. Open a Raynab command.
 6. Follow the instructions and paste your Access Token in the `token` field.
 
@@ -29,7 +41,7 @@ Given that YNAB can be used to handle multiple budgets, in order to properly use
 
 The `Select Active Budget` command lists all your budgets. The currently selected one will display a checkmark on its right. To change it simply press `Enter` and the selection will be saved locally. Once that's done, you're set 🎉
 
-You can change the active budget at any time using the command. For most people with only one budget, that won’t be necessary after the first time.
+You can change the active budget at any time using the command. For most people with only one budget, that won't be necessary after the first time.
 
 ## Commands
 
@@ -93,7 +105,7 @@ Pressing Enter (`↵`) will show the transaction detail view which provides more
     > Editing an unreviewed transaction will automatically mark it as reviewed.
   - Open in YNAB (`⌘` + `O`): Open the current budget in the YNAB Web App.
 
-    YNAB doesn’t have a specific view of the transaction, this will simply direct you to the transaction view for the associated account.
+    YNAB doesn't have a specific view of the transaction, this will simply direct you to the transaction view for the associated account.
 
   - Toggle Flags (`⌥` + `F`): Show or hide flags for all transactions
 
@@ -130,7 +142,7 @@ Pressing Enter (`↵`) will show the transaction detail view which provides more
   - Last quarter
   - Last year
 
-    > To prevent an empty list view, if you try to select a period in which a transaction hasn’t occurred, it will automatically select the closest period at which there is at least one transaction.
+    > To prevent an empty list view, if you try to select a period in which a transaction hasn't occurred, it will automatically select the closest period at which there is at least one transaction.
     > For example, if the last transaction occurred 2 days ago and you try to select `Last Day`, it will fall back to the last week's timeline. So on and so forth, but will stop if no transactions are available in the last year.
     > When opening the Command for the first time, we make this check for you.
 
@@ -139,7 +151,7 @@ Pressing Enter (`↵`) will show the transaction detail view which provides more
   - Inflow: Positive transactions are shown
   - Outflow: Negative transactions are shown
 
-  > This action is superseded by the advanced search feature, more on that below, but I’ve decided to keep it.
+  > This action is superseded by the advanced search feature, more on that below, but I've decided to keep it.
 
 ##### Other
 
@@ -152,21 +164,21 @@ My personal favourite feature about the extension. Advanced Search makes use of 
 Here are the available modifiers:
 
 - `account` Only show results for the given account name.
-- `type` Can either be “inflow" or "outflow”. This is similar to the Filter submenu mentioned above.
+- `type` Can either be "inflow" or "outflow". This is similar to the Filter submenu mentioned above.
 - `category` Only show results for the matched category name.
 - `amount` Only show results which match the exact amount.
 
-Let’s say you would like to search for a transaction at your favourite restaurant, Taco Bell (I won’t judge).
+Let's say you would like to search for a transaction at your favourite restaurant, Taco Bell (I won't judge).
 
 - Typing `Taco Bell` will show you all the results for a payee matching that query.
 - Typing `Taco Bell account:chase checking` will show all the transactions for "Taco Bell" in your "Chase Checking" account.
-- Typing `Taco Bell account:chase checking category:vacation` will show all the transactions for “Taco Bell" in your “Chase Checking" account that were registered under "Vacation”.
+- Typing `Taco Bell account:chase checking category:vacation` will show all the transactions for "Taco Bell" in your "Chase Checking" account that were registered under "Vacation".
 
-As you can see, you can combine modifiers with your query, but what if you wanted to show all of a payee’s transactions which did not occur in a particular account.
+As you can see, you can combine modifiers with your query, but what if you wanted to show all of a payee's transactions which did not occur in a particular account.
 
 Negative modifiers are the same as normal modifiers, but instead they will _exclude_ all transactions which match their input.
 
-- Typing `Taco Bell account:chase checking -category:groceries` will show Taco Bell transactions but not those you have filed as "Groceries” by "mistake”.
+- Typing `Taco Bell account:chase checking -category:groceries` will show Taco Bell transactions but not those you have filed as "Groceries" by "mistake".
 
 > You don't need to enter a payee name before using modifiers. For example `type:inflow` will show _all_ transactions with non-negative amounts.
 
@@ -209,10 +221,10 @@ Display a list of all accounts associated with the selected budget.
 
 Each account is presented from left to right:
 
-- A green icon when the account is considered “On Budget”, red otherwise
+- A green icon when the account is considered "On Budget", red otherwise
 - The name of the account
-- A link icon denoting the status of “[Direct Import Linking](https://docs.youneedabudget.com/article/172-link-account)” for that account:
-  - Grey: The account isn’t linked
+- A link icon denoting the status of "[Direct Import Linking](https://docs.youneedabudget.com/article/172-link-account)" for that account:
+  - Grey: The account isn't linked
   - Green: The direct import is functioning
   - Red: There is an error with the direct import
 
@@ -226,7 +238,7 @@ Each account is presented from left to right:
   - Category
 - Open in YNAB (`⌘` + `O`): Open the current account in the YNAB web app.
 
-  > YNAB doesn’t have a specific view of the transaction, this will simply direct you to your budget. If this behavior changes in the future, we will change the redirect to lead to your account.
+  > YNAB doesn't have a specific view of the transaction, this will simply direct you to your budget. If this behavior changes in the future, we will change the redirect to lead to your account.
 
 ### View Active Budget
 
