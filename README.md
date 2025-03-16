@@ -16,6 +16,8 @@ Check out the [`mcp-conversion-guide.yaml`](./mcp-conversion-guide.yaml) file in
 
 The plan focuses on creating a chat-based interface that lets you interact with your YNAB budget using natural language commands like "Show my budget summary" or "Create a transaction for $50 at Grocery Store".
 
+BTW, I haven't looked into whether Raycast has AI extension capabilities or if this chat-based approach would actually work with Raycast. This is more of a "what if" experiment to see how far we can take it! 🤷‍♂️
+
 ---
 
 # Raynab
