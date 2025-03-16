@@ -1,12 +1,14 @@
 # Raynab - Fork Project
 
-This is a fork of the [Raynab extension](https://github.com/raycast/extensions/tree/8d6754a2f29c2bf1f2838b10125e575f14a0447f/extensions/raynab) from the Raycast Extensions repository. 
+Hey there! 👋 This is my fork of the [Raynab extension](https://github.com/raycast/extensions/tree/8d6754a2f29c2bf1f2838b10125e575f14a0447f/extensions/raynab) from the Raycast Extensions repository. 
 
 ## Project Intent
 
-I'm working on refactoring this extension using agentic AI assistance to convert it into a Model-Controller-Presenter (MCP) architecture. This refactoring project aims to improve code organization, maintainability, and extensibility while preserving all existing functionality.
+I'm playing around with this extension using AI tools to help me convert it into a Model-Controller-Presenter (MCP) architecture. Full disclosure: I'm not a developer and have basically zero coding experience! 🙈
 
-The refactoring process is being performed entirely with the assistance of agentic AI tools, showcasing how modern AI can help transform and modernize existing codebases.
+This is mostly an experiment to see how far AI can take someone without coding skills. I'm curious if modern AI can help regular folks like me understand and improve existing code.
+
+The whole refactoring process is being done with AI assistance. So if you're checking this out, keep your expectations in check! It's more of a fun learning journey than a professional development project.
 
 ---
 
@@ -287,50 +289,4 @@ Categories are grouped in their original category group. Each category is presen
 - Edit Category (`⌘` + `E`): Edit any of the provided transaction information
   - Budgeted Amount
     > This is the only available form field due to a restriction of the current YNAB API
-- Create New Transaction (`⌥` + `C`): Create a new transaction in the selected category
-  - Category: The category of the transaction
-  - Payee: The counterpart name
-  - Account: The account of the transaction
-
-### More about transaction forms
-
-#### Amounts
-
-Transaction amounts in Raynab accept amounts as inflows if they're positive (e.g. 12.34) and outflows if negative (-12.34). The amount supports the currency settings of your currently selected budget. For instance, if your decimal separator is a comma (,) instead of a period (.) you can enter "-12,34".
-
-#### Transfers
-
-When marking a transaction as a transfer, you will be asked to select an account to transfer from, and an account receiving the amount instead of a payee name.
-
-> Account transfers do not have a category in YNAB, and therefore **can not** be split transactions.
-
-#### Split Transactions
-
-Split transactions are transactions with multiple categories. Transactions are automatically converted to split transactions when adding more than one category in the picker.
-
-By default, Raynab will distribute the total evenly between the created categories as you add them to the list.
-
-##### Category total and Auto-Distribute
-
-The sum of all amounts for each category must always be equal to the transaction total amount. If that's not the case, Raynab will prompt you to adjust either the total or distribute them _evenly_ across the categories for you. This function of Raynab is called "Auto-Distribute" from the feature of the same name in YNAB.
-
-With multiple categories selected, you can trigger "Auto-Distribute" yourself at any point by using the "Distribute Total Equally" action.
-
-In addition, when only two categories are selected, Raynab will balance the category amounts when making a change so that when one increases, the other decreases to match the initial transaction's total.
-
-#### Editing existing split transactions
-
-Due to a limitation of the YNAB API, existing split transactions cannot be edited.
-
-### Payee Names
-
-By default, when editing an existing transaction, you can only select a pre-existing payee name. While this covers most of the use case for transaction edits, it is useful to have an option to manually set a new payee name.
-
-The "Show Payee Textfield" action (`⌥` + `P`) will allow you to replace the payee dropdown with a text field and vice-versa.
-
-## Author
-
-Charles De Mount is a Designer & Software Developer who previously worked at [SuperHi](https://superhi.com) and [Vercel](https://vercel.com/).
-Send pets pics or angry messages on Twitter ([@nogocharli](https://x.com/nogocharli)), and job opportunities on [LinkedIn](https://www.linkedin.com/in/charles-yahouedeou/).
-
-Special thanks to the Raycast team and their ever growing API!
+- Create New Transaction (`⌥` + `C`): Create a new transaction on the selected category
