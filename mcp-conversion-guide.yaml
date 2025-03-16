@@ -12,14 +12,12 @@ phases:
     steps:
       - description: "Create new project structure"
         details: "Set up folders for models, controllers, presenters, and a simple chat interface"
-        estimated_time: "1-2 hours"
         output: 
           - "Directory structure for MCP architecture"
           - "Basic project configuration"
       
       - description: "Analyze existing codebase"
         details: "Map out components, data flow, and identify what can be reused vs rebuilt"
-        estimated_time: "3-4 hours"
         output:
           - "Component map document"
           - "Data flow diagram"
@@ -29,7 +27,6 @@ phases:
     steps:
       - description: "Extract YNAB API functionality"
         details: "Move API calls from src/lib/api.ts to model classes"
-        estimated_time: "4-6 hours"
         target_files:
           - "src/lib/api.ts"
         output:
@@ -38,7 +35,6 @@ phases:
       
       - description: "Create data models"
         details: "Create model classes for each entity type (Transaction, Budget, Account, etc.)"
-        estimated_time: "6-8 hours"
         target_files:
           - "src/types.ts"
         output:
@@ -49,7 +45,6 @@ phases:
       
       - description: "Implement business logic"
         details: "Move business logic from components and hooks to model classes"
-        estimated_time: "6-8 hours"
         target_files:
           - "src/hooks/*"
           - "src/lib/utils/*"
@@ -62,13 +57,11 @@ phases:
     steps:
       - description: "Create controller interfaces"
         details: "Define interfaces for controllers to standardize communication patterns"
-        estimated_time: "2-3 hours"
         output:
           - "controllers/interfaces/ControllerInterfaces.ts"
       
       - description: "Implement transaction controllers"
         details: "Create controllers for transaction-related operations"
-        estimated_time: "4-6 hours"
         target_files:
           - "src/transaction.tsx"
           - "src/transactions.tsx"
@@ -78,7 +71,6 @@ phases:
       
       - description: "Implement budget controllers"
         details: "Create controllers for budget-related operations"
-        estimated_time: "4-6 hours"
         target_files:
           - "src/budget.tsx"
           - "src/activeBudget.tsx"
@@ -88,7 +80,6 @@ phases:
       
       - description: "Implement account controllers"
         details: "Create controllers for account-related operations"
-        estimated_time: "3-4 hours"
         target_files:
           - "src/accounts.tsx"
           - "src/components/accounts/*"
@@ -97,7 +88,6 @@ phases:
       
       - description: "Create main application controller"
         details: "Implement a central controller that coordinates between other controllers"
-        estimated_time: "2-3 hours"
         output:
           - "controllers/AppController.ts"
   
@@ -105,31 +95,26 @@ phases:
     steps:
       - description: "Create presenter interfaces"
         details: "Define interfaces for presenters to standardize formatting patterns"
-        estimated_time: "2-3 hours"
         output:
           - "presenters/interfaces/PresenterInterfaces.ts"
       
       - description: "Implement transaction presenters"
         details: "Create presenters for formatting transaction data for chat display"
-        estimated_time: "3-5 hours"
         output:
           - "presenters/TransactionPresenter.ts"
       
       - description: "Implement budget presenters"
         details: "Create presenters for formatting budget data for chat display"
-        estimated_time: "3-5 hours"
         output:
           - "presenters/BudgetPresenter.ts"
       
       - description: "Implement account presenters"
         details: "Create presenters for formatting account data for chat display"
-        estimated_time: "2-4 hours"
         output:
           - "presenters/AccountPresenter.ts"
       
       - description: "Create summary presenters"
         details: "Implement presenters for creating high-level summaries and reports"
-        estimated_time: "3-5 hours"
         output:
           - "presenters/SummaryPresenter.ts"
           - "presenters/helpers/FormatHelpers.ts"
@@ -138,20 +123,17 @@ phases:
     steps:
       - description: "Design chat command interpreter"
         details: "Create a system for converting natural language to controller actions"
-        estimated_time: "6-8 hours"
         output:
           - "chat/CommandInterpreter.ts"
           - "chat/CommandPatterns.ts"
       
       - description: "Implement response formatter"
         details: "Create a system for formatting presenter output as chat messages"
-        estimated_time: "4-6 hours"
         output:
           - "chat/ResponseFormatter.ts"
       
       - description: "Create simple chat interface"
         details: "Implement a basic interface for testing the system"
-        estimated_time: "3-4 hours"
         output:
           - "chat/SimpleChatInterface.ts"
   
@@ -159,7 +141,6 @@ phases:
     steps:
       - description: "Create test cases"
         details: "Define test scenarios for each major feature"
-        estimated_time: "3-4 hours"
         output:
           - "tests/ModelTests.ts"
           - "tests/ControllerTests.ts"
@@ -167,13 +148,11 @@ phases:
       
       - description: "Perform integration testing"
         details: "Test the complete flow from chat input to formatted response"
-        estimated_time: "4-6 hours"
         output:
           - "Test results documentation"
       
       - description: "Refine natural language processing"
         details: "Improve command interpretation based on test results"
-        estimated_time: "4-6 hours"
         output:
           - "Updated CommandInterpreter.ts"
           - "Updated CommandPatterns.ts"
