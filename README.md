@@ -10,6 +10,12 @@ This is mostly an experiment to see how far AI can take someone without coding s
 
 The whole refactoring process is being done with AI assistance. So if you're checking this out, keep your expectations in check! It's more of a fun learning journey than a professional development project.
 
+## Conversion Plan
+
+Check out the [`mcp-conversion-guide.yaml`](./mcp-conversion-guide.yaml) file in this repo! It contains the detailed step-by-step plan for converting this project to an MCP architecture. This guide breaks down the entire process into phases, with time estimates and specific tasks for each step along the way.
+
+The plan focuses on creating a chat-based interface that lets you interact with your YNAB budget using natural language commands like "Show my budget summary" or "Create a transaction for $50 at Grocery Store".
+
 ---
 
 # Raynab
