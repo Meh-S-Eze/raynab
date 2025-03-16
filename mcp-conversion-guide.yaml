@@ -1,0 +1,245 @@
+# MCP Conversion Guide for Raynab to Chat Interface
+# This guide outlines the process of converting the Raynab Raycast extension 
+# to a Model-Controller-Presenter (MCP) architecture for use with chat interfaces.
+
+project:
+  name: "Raynab Chat"
+  description: "A conversational interface for YNAB budgeting powered by MCP architecture"
+  goal: "Convert Raycast UI extension to chat-based interface using MCP architecture"
+
+phases:
+  - name: "Phase 1: Project Setup & Analysis"
+    steps:
+      - description: "Create new project structure"
+        details: "Set up folders for models, controllers, presenters, and a simple chat interface"
+        estimated_time: "1-2 hours"
+        output: 
+          - "Directory structure for MCP architecture"
+          - "Basic project configuration"
+      
+      - description: "Analyze existing codebase"
+        details: "Map out components, data flow, and identify what can be reused vs rebuilt"
+        estimated_time: "3-4 hours"
+        output:
+          - "Component map document"
+          - "Data flow diagram"
+          - "Reusable code inventory"
+  
+  - name: "Phase 2: Model Layer Implementation"
+    steps:
+      - description: "Extract YNAB API functionality"
+        details: "Move API calls from src/lib/api.ts to model classes"
+        estimated_time: "4-6 hours"
+        target_files:
+          - "src/lib/api.ts"
+        output:
+          - "models/YnabApi.ts"
+          - "models/interfaces/ApiInterfaces.ts"
+      
+      - description: "Create data models"
+        details: "Create model classes for each entity type (Transaction, Budget, Account, etc.)"
+        estimated_time: "6-8 hours"
+        target_files:
+          - "src/types.ts"
+        output:
+          - "models/Transaction.ts"
+          - "models/Budget.ts"
+          - "models/Account.ts"
+          - "models/Category.ts"
+      
+      - description: "Implement business logic"
+        details: "Move business logic from components and hooks to model classes"
+        estimated_time: "6-8 hours"
+        target_files:
+          - "src/hooks/*"
+          - "src/lib/utils/*"
+        output:
+          - "models/services/TransactionService.ts"
+          - "models/services/BudgetService.ts"
+          - "models/services/AccountService.ts"
+  
+  - name: "Phase 3: Controller Layer Implementation"
+    steps:
+      - description: "Create controller interfaces"
+        details: "Define interfaces for controllers to standardize communication patterns"
+        estimated_time: "2-3 hours"
+        output:
+          - "controllers/interfaces/ControllerInterfaces.ts"
+      
+      - description: "Implement transaction controllers"
+        details: "Create controllers for transaction-related operations"
+        estimated_time: "4-6 hours"
+        target_files:
+          - "src/transaction.tsx"
+          - "src/transactions.tsx"
+          - "src/components/transactions/*"
+        output:
+          - "controllers/TransactionController.ts"
+      
+      - description: "Implement budget controllers"
+        details: "Create controllers for budget-related operations"
+        estimated_time: "4-6 hours"
+        target_files:
+          - "src/budget.tsx"
+          - "src/activeBudget.tsx"
+          - "src/components/budgets/*"
+        output:
+          - "controllers/BudgetController.ts"
+      
+      - description: "Implement account controllers"
+        details: "Create controllers for account-related operations"
+        estimated_time: "3-4 hours"
+        target_files:
+          - "src/accounts.tsx"
+          - "src/components/accounts/*"
+        output:
+          - "controllers/AccountController.ts"
+      
+      - description: "Create main application controller"
+        details: "Implement a central controller that coordinates between other controllers"
+        estimated_time: "2-3 hours"
+        output:
+          - "controllers/AppController.ts"
+  
+  - name: "Phase 4: Presenter Layer Implementation"
+    steps:
+      - description: "Create presenter interfaces"
+        details: "Define interfaces for presenters to standardize formatting patterns"
+        estimated_time: "2-3 hours"
+        output:
+          - "presenters/interfaces/PresenterInterfaces.ts"
+      
+      - description: "Implement transaction presenters"
+        details: "Create presenters for formatting transaction data for chat display"
+        estimated_time: "3-5 hours"
+        output:
+          - "presenters/TransactionPresenter.ts"
+      
+      - description: "Implement budget presenters"
+        details: "Create presenters for formatting budget data for chat display"
+        estimated_time: "3-5 hours"
+        output:
+          - "presenters/BudgetPresenter.ts"
+      
+      - description: "Implement account presenters"
+        details: "Create presenters for formatting account data for chat display"
+        estimated_time: "2-4 hours"
+        output:
+          - "presenters/AccountPresenter.ts"
+      
+      - description: "Create summary presenters"
+        details: "Implement presenters for creating high-level summaries and reports"
+        estimated_time: "3-5 hours"
+        output:
+          - "presenters/SummaryPresenter.ts"
+          - "presenters/helpers/FormatHelpers.ts"
+  
+  - name: "Phase 5: Chat Interface Implementation"
+    steps:
+      - description: "Design chat command interpreter"
+        details: "Create a system for converting natural language to controller actions"
+        estimated_time: "6-8 hours"
+        output:
+          - "chat/CommandInterpreter.ts"
+          - "chat/CommandPatterns.ts"
+      
+      - description: "Implement response formatter"
+        details: "Create a system for formatting presenter output as chat messages"
+        estimated_time: "4-6 hours"
+        output:
+          - "chat/ResponseFormatter.ts"
+      
+      - description: "Create simple chat interface"
+        details: "Implement a basic interface for testing the system"
+        estimated_time: "3-4 hours"
+        output:
+          - "chat/SimpleChatInterface.ts"
+  
+  - name: "Phase 6: Testing & Refinement"
+    steps:
+      - description: "Create test cases"
+        details: "Define test scenarios for each major feature"
+        estimated_time: "3-4 hours"
+        output:
+          - "tests/ModelTests.ts"
+          - "tests/ControllerTests.ts"
+          - "tests/PresenterTests.ts"
+      
+      - description: "Perform integration testing"
+        details: "Test the complete flow from chat input to formatted response"
+        estimated_time: "4-6 hours"
+        output:
+          - "Test results documentation"
+      
+      - description: "Refine natural language processing"
+        details: "Improve command interpretation based on test results"
+        estimated_time: "4-6 hours"
+        output:
+          - "Updated CommandInterpreter.ts"
+          - "Updated CommandPatterns.ts"
+
+key_concepts:
+  model_layer:
+    description: "Responsible for data management and business logic"
+    components:
+      - "Data structures (classes representing YNAB entities)"
+      - "API communication with YNAB"
+      - "Business logic and validation rules"
+    examples:
+      - "TransactionModel: manages transaction data and CRUD operations"
+      - "BudgetModel: handles budget calculations and category management"
+  
+  controller_layer:
+    description: "Coordinates actions between models and presenters"
+    components:
+      - "Command handlers"
+      - "Application flow control"
+      - "Error handling"
+    examples:
+      - "TransactionController: processes commands like 'create transaction'"
+      - "BudgetController: handles requests like 'show budget summary'"
+  
+  presenter_layer:
+    description: "Formats data for display in chat interface"
+    components:
+      - "Text formatting"
+      - "Data visualization for chat"
+      - "User-friendly messaging"
+    examples:
+      - "TransactionPresenter: formats transaction details into readable text"
+      - "SummaryPresenter: creates concise budget overviews"
+
+common_commands:
+  - command: "Show my budget summary"
+    flow: 
+      - "CommandInterpreter identifies intent as 'budget_summary'"
+      - "AppController routes to BudgetController"
+      - "BudgetController requests data from BudgetModel"
+      - "BudgetController passes data to BudgetPresenter"
+      - "BudgetPresenter formats summary for chat display"
+  
+  - command: "Create a transaction for $50 at Grocery Store in Food category"
+    flow:
+      - "CommandInterpreter parses intent and transaction details"
+      - "AppController routes to TransactionController"
+      - "TransactionController validates and sends to TransactionModel"
+      - "TransactionModel creates transaction via YNAB API"
+      - "TransactionController confirms via TransactionPresenter"
+  
+  - command: "Am I on track with my budget this month?"
+    flow:
+      - "CommandInterpreter identifies intent as 'budget_status'"
+      - "AppController routes to BudgetController"
+      - "BudgetController fetches data from BudgetModel"
+      - "BudgetController requests analysis from AnalysisService"
+      - "BudgetController passes results to SummaryPresenter"
+      - "SummaryPresenter formats analysis for chat display"
+
+implementation_tips:
+  - "Start by focusing on one complete flow (e.g., transactions) to get early wins"
+  - "Use TypeScript interfaces extensively to maintain clear boundaries between layers"
+  - "Keep natural language processing simple initially - focus on key command patterns"
+  - "Leverage existing YNAB API code from the original project where possible"
+  - "Consider using a simple state machine for managing conversation context"
+  - "Document each layer's responsibilities clearly for future reference"
+  - "Include detailed logging to make debugging easier" 
