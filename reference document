@@ -1,0 +1,107 @@
+
+
+
+
+
+# Authentication Flow in MCP with Chat Interface Options
+
+## YNAB Authentication Flow in MCP
+
+The authentication flow for your Raynab MCP would work as follows:
+
+1. **Initial Interaction**: The user starts a conversation with Claude and expresses interest in managing their YNAB budget.
+
+2. **Token Request**: Claude explains that authentication is needed and instructs the user to obtain a personal access token from the YNAB website:
+   ```
+   To access your YNAB data, I'll need your personal access token. You can generate one at https://app.youneedabudget.com/settings/developer
+   ```
+
+3. **Token Provision**: The user obtains and provides the token to Claude.
+
+4. **Token Storage**: Claude calls the `authenticate` tool in your MCP implementation:
+   ```typescript
+   // Example of what happens behind the scenes
+   await mcpClient.call('raynab', 'authenticate', { token: 'user-provided-token' });
+   ```
+
+5. **Token Validation**: Your MCP server validates the token with the YNAB API and stores it securely in a local configuration file or environment variable.
+
+6. **Session Persistence**: For the duration of the session (or across sessions if implemented), your MCP server uses the stored token for all YNAB API calls without requiring re-authentication.
+
+7. **Token Refresh**: If the token expires, Claude would detect the authentication error and prompt the user to provide a new token.
+
+## Available Chat Interfaces for MCP
+
+There are several options for chat interfaces that work with MCP:
+
+### 1. Claude Desktop (Recommended)
+
+Claude Desktop is the simplest option for integrating with your MCP:
+
+- **Native MCP Support**: Claude Desktop has built-in support for MCP servers.
+- **Configuration**: You'd configure Claude Desktop to connect to your Raynab MCP server through its config file:
+
+```json
+// ~/.claude/claude_desktop_config.json
+{
+  "mcpServers": {
+    "raynab": {
+      "command": "node",
+      "args": ["./dist/index.js"],
+      "cwd": "/path/to/your/raynab-mcp"
+    }
+  }
+}
+```
+
+- **User Experience**: Users simply chat with Claude as normal, and when they mention YNAB or budgeting, Claude automatically knows to use your Raynab MCP.
+- **No Additional Development**: This approach requires no additional chat interface development.
+
+### 2. Claude Web/Mobile with uvx
+
+Anthropic offers a tool called `uvx` that can package your MCP server for distribution:
+
+- **Distribution**: Package your MCP as a standalone app that users can install.
+- **Integration**: Users can then refer to your tool in Claude web or mobile apps.
+- **Documentation**: Anthropic provides documentation for creating and distributing MCP tools this way.
+
+### 3. Custom Web Interface
+
+If you want complete control over the user experience:
+
+- **Custom Development**: Build a web application with a chat interface.
+- **Claude API Integration**: Integrate Anthropic's API to power the chat.
+- **MCP Connection**: Your web app would need to either:
+  - Run the MCP server in the background (for desktop web apps)
+  - Connect to a hosted version of your MCP server (for cloud deployment)
+
+```javascript
+// Example front-end code (simplified)
+async function sendMessage(userMessage) {
+  const response = await fetch('https://your-api-endpoint.com/chat', {
+    method: 'POST',
+    body: JSON.stringify({
+      message: userMessage,
+      tool_use: "raynab" // Signal to use Raynab MCP
+    })
+  });
+  
+  const data = await response.json();
+  displayResponse(data.response);
+}
+```
+
+## Recommendation
+
+The simplest approach is to use Claude Desktop, as it:
+
+1. Requires no additional chat interface development
+2. Provides a seamless experience for users
+3. Handles all the complexity of tool use behind the scenes
+
+For users who don't have Claude Desktop, you could package your MCP with `uvx` for broader accessibility. This gives you the benefits of MCP without having to build your own chat interface from scratch.
+
+If you do require a completely custom experience, building a web interface with Claude API integration is possible but would require significantly more development effort.
+
+---
+Answer from Perplexity: pplx.ai/share
