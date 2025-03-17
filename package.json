@@ -67,6 +67,7 @@
     "budget"
   ],
   "dependencies": {
+    "@modelcontextprotocol/sdk": "latest",
     "@raycast/api": "^1.88.4",
     "@raycast/utils": "^1.18.1",
     "dayjs": "^1.11.13",
@@ -76,20 +77,19 @@
     "node-localstorage": "^2.2.1",
     "random-hex-color-generator": "^1.0.12",
     "swr": "^2.2.5",
-    "ynab": "^2.6.0",
-    "@modelcontextprotocol/sdk": "latest",
-    "zod": "^3.21.4"
+    "ynab": "^2.6.0"
   },
   "devDependencies": {
     "@raycast/eslint-config": "^1.0.11",
-    "@types/node": "^20.17.12",
+    "@types/node": "^20.17.24",
     "@types/react": "^18.3.18",
     "eslint": "^8.57.1",
     "eslint-config-prettier": "^8.3.0",
     "prettier": "^3.4.2",
     "react-devtools": "^5.2.0",
     "typescript": "^5.7.2",
-    "vitest": "^2.1.9"
+    "vitest": "^2.1.9",
+    "zod": "^3.24.2"
   },
   "preferences": [
     {
