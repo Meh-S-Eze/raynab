@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "ynab-budget-manager": {
+      "command": "node",
+      "args": ["simple-mcp-server.js"],
+      "env": {
+        "YNAB_TOKEN": "5YTfUea-_BgtRVWgAY_Gdpgqimho-AHD2cwg4Rza5fo",
+        "YNAB_BUDGET_ID": "1f13ab12-aed2-4c49-8c51-d6491aff6352"
+      },
+      "disabled": false,
+      "autoApprove": ["listTransactions", "listAccounts", "getBudgetSummary"]
+    }
+  }
+} 

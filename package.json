@@ -67,17 +67,20 @@
     "budget"
   ],
   "dependencies": {
-    "@modelcontextprotocol/sdk": "latest",
+    "@modelcontextprotocol/create-server": "^0.3.1",
+    "@modelcontextprotocol/sdk": "^1.7.0",
     "@raycast/api": "^1.88.4",
     "@raycast/utils": "^1.18.1",
     "dayjs": "^1.11.13",
+    "dotenv": "^16.4.7",
     "fuse.js": "^6.5.3",
     "nanoid": "^3.2.0",
     "node-fetch": "^3.0.0",
     "node-localstorage": "^2.2.1",
     "random-hex-color-generator": "^1.0.12",
     "swr": "^2.2.5",
-    "ynab": "^2.6.0"
+    "ynab": "^2.6.0",
+    "zod": "^3.24.2"
   },
   "devDependencies": {
     "@raycast/eslint-config": "^1.0.11",
@@ -88,8 +91,7 @@
     "prettier": "^3.4.2",
     "react-devtools": "^5.2.0",
     "typescript": "^5.7.2",
-    "vitest": "^2.1.9",
-    "zod": "^3.24.2"
+    "vitest": "^2.1.9"
   },
   "preferences": [
     {
@@ -120,12 +122,15 @@
     }
   ],
   "scripts": {
-    "build": "ray build -e dist",
+    "build:ray": "ray build -e dist",
+    "build:mcp": "tsc",
+    "build": "tsc",
     "dev": "ray develop",
     "fix-lint": "ray lint --fix",
     "lint": "ray lint",
     "publish": "ray publish",
     "test": "vitest",
-    "start": "node dist/index.js"
+    "start": "node dist/index.js",
+    "start:mcp": "npm run build && node dist/index.js"
   }
 }
