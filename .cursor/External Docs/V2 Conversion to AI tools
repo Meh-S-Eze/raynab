@@ -1,0 +1,152 @@
+Certainly! I'll create a new document that addresses the areas for improvement and incorporates the suggested enhancements. This revised document will focus on leveraging existing YNAB functionality while adapting it for use with Raycast's AI chat interface.
+
+# Revised Raynab to Raycast AI Conversion Guide
+
+## 1. Tool Schema File (New)
+**File:** `src/lib/raynab-tools.ts`
+```typescript
+import { z } from "zod";
+
+export const RaynabToolSchema = {
+  create_transaction: {
+    description: "Create a new transaction",
+    parameters: z.object({
+      payee: z.string().describe("Name of payee"),
+      amount: z.number().describe("Transaction amount in dollars (e.g., 10.50 for $10.50)"),
+      category: z.string().describe("Budget category"),
+      date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).describe("Transaction date in YYYY-MM-DD format")
+    })
+  },
+  get_budget_summary: {
+    description: "Get budget summary for current month",
+    parameters: z.object({})
+  },
+  // Add more YNAB-specific tools as needed
+};
+```
+
+## 2. Modified API Handler
+**File:** `src/lib/api.ts`
+```typescript
+import { API } from "ynab";
+import { RaynabToolSchema } from "./raynab-tools";
+
+const ynab = new API(process.env.YNAB_ACCESS_TOKEN);
+
+const toMilliunits = (amount: number) => Math.round(amount * 1000);
+const fromMilliunits = (amount: number) => amount / 1000;
+
+export async function executeRaynabCommand(command: keyof typeof RaynabToolSchema, params: any) {
+  try {
+    switch (command) {
+      case "create_transaction":
+        const transaction = await ynab.transactions.createTransaction(budgetId, {
+          transaction: {
+            payee_name: params.payee,
+            amount: toMilliunits(params.amount),
+            category_id: params.category,
+            date: params.date
+          }
+        });
+        return {
+          success: true,
+          transaction_id: transaction.data.transaction.id,
+          message: `Created transaction for $${params.amount.toFixed(2)}`
+        };
+
+      case "get_budget_summary":
+        const budgetMonth = await ynab.months.getBudgetMonth(budgetId, new Date().toISOString().slice(0, 7));
+        return {
+          success: true,
+          income: fromMilliunits(budgetMonth.data.month.income),
+          budgeted: fromMilliunits(budgetMonth.data.month.budgeted),
+          activity: fromMilliunits(budgetMonth.data.month.activity)
+        };
+
+      // Add more cases for other YNAB operations
+    }
+  } catch (error) {
+    if (error instanceof API.ErrorResponse) {
+      return { error: error.error.detail, code: error.error.id };
+    }
+    return { error: "An unexpected error occurred", code: "UNKNOWN_ERROR" };
+  }
+}
+```
+
+## 3. Modified AI Hook
+**File:** `src/hooks/useRaynabAI.ts`
+```typescript
+import { useAI } from "@raycast/utils";
+import { RaynabToolSchema } from "../lib/raynab-tools";
+
+export function useRaynabAI() {
+  const { data, error, isLoading } = useAI({
+    model: "ray-1",
+    systemPrompt: `You are a YNAB budget assistant. Use standard currency format (e.g., $10.50) when discussing amounts. 
+    The system will handle conversion to YNAB's milliunit format internally. 
+    Always use YYYY-MM-DD for dates. Current date: ${new Date().toISOString().slice(0, 10)}`,
+    tools: Object.keys(RaynabToolSchema),
+    memory: {
+      window: 5,
+      anchors: {
+        temporal: true,
+        lastTransaction: (history) => 
+          history.findLast(h => h.role === "tool" && h.name === "create_transaction")
+      }
+    }
+  });
+
+  return { data, error, isLoading };
+}
+```
+
+## 4. Modified Main Command
+**File:** `src/index.tsx`
+```typescript
+import { List } from "@raycast/api";
+import { useRaynabAI } from "./hooks/useRaynabAI";
+import { executeRaynabCommand } from "./lib/api";
+
+export default function Command() {
+  const { data, error, isLoading } = useRaynabAI();
+
+  const handleAction = async (toolName: string, params: any) => {
+    try {
+      const result = await executeRaynabCommand(toolName, params);
+      // Handle result (e.g., show in UI, update state, etc.)
+    } catch (error) {
+      // Handle error
+    }
+  };
+
+  return (
+     {
+        // Use AI to interpret user input and suggest actions
+      }}
+    >
+      {/* Render AI suggestions and YNAB data here */}
+    
+  );
+}
+```
+
+## Key Improvements:
+
+1. **Currency Handling**: The `toMilliunits` and `fromMilliunits` functions ensure proper conversion between standard currency and YNAB's milliunit format.
+
+2. **Leveraging Existing YNAB Functionality**: The `executeRaynabCommand` function uses the existing YNAB API client to perform operations.
+
+3. **Enhanced Type Safety**: The `RaynabToolSchema` uses Zod for runtime type checking, which complements TypeScript's static typing.
+
+4. **YNAB-Specific Error Handling**: The API handler catches and formats YNAB-specific errors, making them more user-friendly for the AI interface.
+
+5. **Prompt Engineering**: The system prompt in `useRaynabAI` includes specific instructions about handling currency formats and dates.
+
+This revised approach maintains compatibility with Raycast's extension system while adapting the existing YNAB functionality for use with an AI chat interface. It preserves type safety and error handling from the original codebase while enabling natural language interactions with YNAB data.
+
+Citations:
+[1] https://ppl-ai-file-upload.s3.amazonaws.com/web/direct-files/17003646/13140770-75c8-42a1-b92a-2088a4d6b16e/paste.txt
+
+---
+Answer from Perplexity: pplx.ai/share

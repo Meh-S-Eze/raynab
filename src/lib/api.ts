@@ -306,3 +306,29 @@ export async function updateCategory(selectedBudgetId: string, categoryId: strin
     }
   }
 }
+
+export async function getBudgetSummary() {
+  try {
+    const selectedBudgetId = 'last-used';
+    const budgetResponse = await client.budgets.getBudgetById(selectedBudgetId);
+    const { months, currency_format } = budgetResponse.data.budget;
+    
+    // Get current month's data
+    const currentMonth = months[months.length - 1];
+    
+    return {
+      income: currentMonth.income,
+      budgeted: currentMonth.budgeted,
+      activity: currentMonth.activity,
+      currency_format
+    };
+  } catch (error) {
+    captureException(error);
+    if (isYnabError(error)) {
+      const { message } = displayError(error, 'Failed to fetch budget summary');
+      throw new Error(message);
+    } else {
+      throw error;
+    }
+  }
+}
