@@ -1,0 +1,336 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Enhanced Raycast AI Tool Template System
+
+## Directory Structure
+All tool implementations should follow the structure defined in Project Guide.mdc:
+- Tool implementations go in `src/tools/`
+- Base template and shared types in `src/lib/tools/`
+- Tests in `__tests__/tools/`
+- Eval test cases in `evals/`
+
+## Base Tool Template
+Location: `src/lib/tools/base-tool.ts`
+
+### Core Types
+```typescript
+// Base input type that all tools extend
+export type BaseToolParams = Record<string, unknown>;
+
+// AI Integration
+export type AIToolConfig = {
+  description: string;
+  examples: string[];
+  constraints: string[];
+  followUpSuggestions: string[];
+};
+
+// Loading State Management
+export type LoadingState = {
+  message: string;
+  progress?: number;
+  status: 'idle' | 'loading' | 'success' | 'error';
+  cancelable?: boolean;
+};
+
+// Confirmation Flow
+export type ConfirmationConfig = {
+  requiresConfirmation: boolean | ((params: P) => boolean);
+  style?: 'regular' | 'destructive' | 'warning';
+  customUI?: React.ComponentType<ConfirmationProps>;
+  info?: Array<{ name: string; value: string | ((params: P) => string) }>;
+};
+
+// Error Handling
+export type ToolError = {
+  type: string;
+  message: string;
+  actionNeeded?: string;
+  details?: unknown;
+  retryable?: boolean;
+  recovery?: {
+    action: string;
+    description: string;
+  };
+};
+
+// Runtime Dependencies
+export type RuntimeDependency = {
+  name: string;
+  check: () => Promise<boolean>;
+  installInstructions: string;
+  optional?: boolean;
+};
+
+// Logging Strategy
+export type LogConfig = {
+  level: 'debug' | 'info' | 'warn' | 'error';
+  format: 'json' | 'text';
+  context?: Record<string, unknown>;
+  sensitiveFields?: string[];
+};
+
+// Response Format
+export type ToolResponse<T> = 
+  | { success: true; data: T; message: string; followUpSuggestions?: string[] }
+  | { success: false; error: ToolError };
+```
+
+### Tool Configuration
+```typescript
+export interface ToolConfig<P, R, T> {
+  name: string;
+  schema: z.ZodType<P>;
+  ai?: AIToolConfig;
+  requiresAuth?: boolean;
+  dependencies?: RuntimeDependency[];
+  confirmation?: ConfirmationConfig;
+  getLoadingState?: (params: P, status?: string) => LoadingState;
+  logging?: LogConfig;
+  execute: (params: P) => Promise<R>;
+  formatResponse: (result: R, params: P) => ToolResponse<T>;
+  handleError: (error: unknown, params: P) => ToolError;
+}
+```
+
+## Example Implementation
+Location: `src/tools/create_transaction.ts`
+
+### Schema Definition
+```typescript
+const createTransactionSchema = z.object({
+  amount: z.number().describe("Transaction amount in decimal dollars (e.g., 10.99)"),
+  account_id: z.string().uuid().optional().describe("Account UUID"),
+  payee_name: z.string().optional().describe("Payee display name"),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).default(
+    new Date().toISOString().split('T')[0]
+  ),
+  memo: z.string().max(200).optional(),
+  category_id: z.string().uuid().optional()
+});
+```
+
+### Tool Configuration
+```typescript
+export default createTool({
+  name: "create_transaction",
+  schema: createTransactionSchema,
+  ai: {
+    description: "Create a new financial transaction in YNAB",
+    examples: [
+      "Create a $45.99 expense for groceries",
+      "Add income of $1000 from my job"
+    ],
+    constraints: [
+      "Amount must be a number (positive for income, negative for expenses)",
+      "Date must be in YYYY-MM-DD format"
+    ],
+    followUpSuggestions: [
+      "Show my recent transactions",
+      "What's my budget summary?"
+    ]
+  },
+  dependencies: [
+    {
+      name: "ynab-api",
+      check: async () => validateYnabApi(),
+      installInstructions: "Set up your YNAB API token in preferences.",
+      optional: false
+    }
+  ],
+  confirmation: {
+    requiresConfirmation: (params) => Math.abs(params.amount) > 100,
+    style: 'warning',
+    info: [
+      { name: "Amount", value: (params) => formatCurrency(params.amount) },
+      { name: "Payee", value: (params) => params.payee_name || "Not specified" },
+      { name: "Date", value: (params) => params.date }
+    ]
+  },
+  logging: {
+    level: 'debug',
+    format: 'json',
+    context: { toolName: 'create_transaction' },
+    sensitiveFields: ['account_id', 'category_id']
+  },
+  execute: async (params) => {
+    const businessParams = {
+      accountId: params.account_id || await getDefaultAccount(),
+      amount: toMilliunits(params.amount),
+      payeeName: params.payee_name,
+      date: params.date,
+      memo: params.memo,
+      categoryId: params.category_id
+    };
+    return await createYnabTransaction(businessParams);
+  },
+  formatResponse: (result, params) => ({
+    success: true,
+    data: {
+      transactionId: result.id,
+      amount: params.amount,
+      status: result.status
+    },
+    message: `Created a ${params.amount > 0 ? 'income' : 'expense'} transaction of ${formatCurrency(Math.abs(params.amount))}`
+  }),
+  handleError: (error, params) => {
+    if (error instanceof Error) {
+      if (error.message.includes("duplicate")) {
+        return {
+          type: "DUPLICATE_TRANSACTION",
+          message: "This transaction appears to be a duplicate",
+          retryable: false,
+          details: { originalMessage: error.message }
+        };
+      }
+      if (error.message.includes("budget")) {
+        return {
+          type: "BUDGET_ERROR",
+          message: "There was an issue with your budget",
+          actionNeeded: "check_budget",
+          details: { originalMessage: error.message },
+          recovery: {
+            action: "SELECT_BUDGET",
+            description: "Select a different budget or check your budget settings"
+          }
+        };
+      }
+      return {
+        type: "API_ERROR",
+        message: error.message,
+        details: { stack: error.stack },
+        retryable: true
+      };
+    }
+    return {
+      type: "UNKNOWN_ERROR",
+      message: "An unexpected error occurred",
+      details: String(error)
+    };
+  }
+});
+```
+
+## Testing Strategy
+Location: `__tests__/tools/create_transaction.test.ts`
+
+### Test Structure
+```typescript
+describe("create_transaction tool", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it("validates input parameters", async () => {
+    const result = await createTransaction({ 
+      amount: "not-a-number" 
+    });
+    expect(result.success).toBe(false);
+    expect(result.error.type).toBe("VALIDATION_ERROR");
+  });
+
+  it("transforms parameters correctly", async () => {
+    mockBusinessLogic.createYnabTransaction.mockResolvedValue({
+      id: "test-id",
+      status: "success"
+    });
+    
+    await createTransaction({
+      amount: -10.50,
+      account_id: "test-account"
+    });
+    
+    expect(mockBusinessLogic.createYnabTransaction).toHaveBeenCalledWith(
+      expect.objectContaining({
+        amount: -10500,
+        accountId: "test-account"
+      })
+    );
+  });
+
+  it("handles dependencies correctly", async () => {
+    mockBusinessLogic.validateYnabApi.mockResolvedValueOnce(false);
+    const result = await createTransaction({ amount: 10 });
+    expect(result.success).toBe(false);
+    expect(result.error.type).toBe("DEPENDENCY_ERROR");
+  });
+
+  it("provides detailed error information", async () => {
+    const error = new Error("Duplicate transaction detected");
+    mockBusinessLogic.createYnabTransaction.mockRejectedValueOnce(error);
+    const result = await createTransaction({ amount: 10 });
+    expect(result.success).toBe(false);
+    expect(result.error.type).toBe("DUPLICATE_TRANSACTION");
+    expect(result.error.retryable).toBe(false);
+  });
+});
+```
+
+## Eval Test Cases
+Location: `evals/create_transaction.json`
+
+### Eval Structure
+```json
+{
+  "input": "I spent $45.99 at Safeway yesterday for groceries",
+  "mocks": {
+    "getDefaultAccount": "grocery-account"
+  },
+  "expected": [
+    {
+      "callsTool": "create_transaction",
+      "withParams": {
+        "amount": -45.99,
+        "payee_name": "Safeway",
+        "memo": "groceries",
+        "date": "2024-03-19"
+      }
+    }
+  ]
+}
+```
+
+## Best Practices
+
+1. **Directory Structure**
+   - Keep tool implementations in `src/tools/`
+   - Maintain business logic in `src/lib/`
+   - Place tests in `__tests__/tools/`
+   - Store eval test cases in `evals/`
+
+2. **Type Safety**
+   - Use Zod for runtime validation
+   - Define clear types for all parameters and responses
+   - Leverage TypeScript's type inference
+
+3. **Error Handling**
+   - Provide detailed error information
+   - Include recovery options when possible
+   - Log errors with appropriate context
+
+4. **AI Integration**
+   - Write clear descriptions
+   - Provide relevant examples
+   - Include helpful follow-up suggestions
+
+5. **Testing**
+   - Test input validation
+   - Test parameter transformation
+   - Test error handling
+   - Test dependency checks
+   - Use eval test cases for AI interaction
+
+6. **Logging**
+   - Use structured logging
+   - Redact sensitive information
+   - Include relevant context
+   - Use appropriate log levels
+
+7. **User Experience**
+   - Show loading states
+   - Provide clear feedback
+   - Handle confirmations appropriately
+   - Give helpful error messages

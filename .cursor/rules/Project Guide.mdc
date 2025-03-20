@@ -3,289 +3,69 @@ description:
 globs: 
 alwaysApply: true
 ---
----
-title: Tool Schema Definition
-description: Define AI-accessible YNAB operations with Zod validation
-glob: src/lib/raynab-tools.ts
-action: Add YNAB operation schemas
-context: 
-  - raycast-ai-tool-schema-docs
-  - ynab-api-reference
----
+# Raycast AI Extension for YNAB: Project Structure and Implementation Guide
 
-import { z } from "zod";
+## Project Overview
+We are creating a Raycast AI Extension for YNAB (You Need A Budget) that leverages existing business logic while providing a thin adapter layer for AI interactions. This extension will allow users to interact with their YNAB data using natural language through Raycast's AI interface.
 
-export const RaynabToolSchema = {
-  create_transaction: {
-    description: "Create a new transaction",
-    parameters: z.object({
-      payee: z.string().describe("Name of payee"),
-      amount: z.number().describe("Transaction amount in dollars (e.g., 10.50 for $10.50)"),
-      category: z.string().describe("Budget category"),
-      date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).describe("Transaction date in YYYY-MM-DD format")
-    })
-  },
-  get_budget_summary: {
-    description: "Get budget summary for current month",
-    parameters: z.object({})
-  },
-  list_transactions: {
-    description: "List recent transactions",
-    parameters: z.object({
-      since_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().describe("Filter transactions since date (YYYY-MM-DD)"),
-      limit: z.number().min(1).max(50).optional().describe("Maximum number of transactions to return")
-    })
-  },
-  get_category_balance: {
-    description: "Get category balance and activity",
-    parameters: z.object({
-      category_id: z.string().describe("Category ID to check")
-    })
-  }
-} as const;
+## Project Structure
 
----
-title: API Handler Modifications
-description: Implement YNAB command execution with error handling
-glob: src/lib/api.ts
-action: Add command dispatcher
-context:
-  - ynab-sdk-docs
-  - existing-ynab-functions
----
+```
+raynab/
+├── src/
+│   ├── lib/
+│   │   ├── api.ts
+│   │   ├── currency.ts
+│   │   ├── validation.ts
+│   │   ├── preferences.ts
+│   │   ├── errors.ts
+│   │   └── tools/
+│   │       └── base-tool.ts
+│   ├── tools/
+│   │   ├── create_transaction.ts
+│   │   ├── get_budget_summary.ts
+│   │   ├── list_transactions.ts
+│   │   └── get_category_balance.ts
+│   └── index.ts
+├── __tests__/
+│   └── tools/
+│       └── create_transaction.test.ts
+└── evals/
+    └── create_transaction.json
+```
 
-import { API } from "ynab";
-import { RaynabToolSchema } from "./raynab-tools";
+## Key Components
 
-const ynab = new API(process.env.YNAB_ACCESS_TOKEN);
+1. **Existing Business Logic** (src/lib/): Contains core YNAB functionality.
+2. **Base Tool Template** (src/lib/tools/base-tool.ts): Provides a reusable pattern for creating thin tool adapters.
+3. **Tool Implementations** (src/tools/): Individual tools that act as thin adapters between AI and business logic.
+4. **Tests** (__tests__/): Unit tests for tool implementations.
+5. **Evals** (evals/): Test cases for AI interactions with tools.
 
-const toMilliunits = (amount: number) => Math.round(amount * 1000);
-const fromMilliunits = (amount: number) => amount / 1000;
+## Implementation Approach
 
-export async function executeRaynabCommand(command: keyof typeof RaynabToolSchema, params: any) {
-  try {
-    switch (command) {
-      case "create_transaction":
-        const transaction = await ynab.transactions.createTransaction(budgetId, {
-          transaction: {
-            payee_name: params.payee,
-            amount: toMilliunits(params.amount),
-            category_id: params.category,
-            date: params.date
-          }
-        });
-        return {
-          success: true,
-          transaction_id: transaction.data.transaction.id,
-          message: `Created transaction for $${params.amount.toFixed(2)}`
-        };
+1. Reuse existing business logic from src/lib/.
+2. Create thin tool adapters in src/tools/ using the base tool template.
+3. Implement proper input validation, error handling, and response formatting in each tool.
+4. Add confirmations for destructive actions.
+5. Ensure proper loading state management and user feedback.
+6. Implement comprehensive unit tests for each tool.
+7. Create eval test cases for AI interactions.
 
-      case "get_budget_summary":
-        const budgetMonth = await ynab.months.getBudgetMonth(budgetId, new Date().toISOString().slice(0, 7));
-        return {
-          success: true,
-          income: fromMilliunits(budgetMonth.data.month.income),
-          budgeted: fromMilliunits(budgetMonth.data.month.budgeted),
-          activity: fromMilliunits(budgetMonth.data.month.activity),
-          message: `Budget summary for ${budgetMonth.data.month.month}`
-        };
+## Best Practices
 
-      case "list_transactions":
-        const txResponse = await ynab.transactions.getTransactions(budgetId, {
-          since_date: params.since_date
-        });
-        return {
-          success: true,
-          transactions: txResponse.data.transactions
-            .slice(0, params.limit || 10)
-            .map(tx => ({
-              id: tx.id,
-              date: tx.date,
-              payee: tx.payee_name,
-              amount: fromMilliunits(tx.amount),
-              category: tx.category_name
-            }))
-        };
+1. Keep tools focused on input/output adaptation.
+2. Leverage existing functions for currency conversion, data validation, and error handling.
+3. Maintain consistent response formats across all tools.
+4. Implement proper runtime dependency checks (e.g., YNAB token validation).
+5. Use Zod for schema validation that aligns with existing business logic.
+6. Provide clear, AI-friendly error messages and follow-up suggestions.
 
-      case "get_category_balance":
-        const category = await ynab.categories.getCategory(budgetId, params.category_id);
-        return {
-          success: true,
-          balance: fromMilliunits(category.data.category.balance),
-          activity: fromMilliunits(category.data.category.activity),
-          budgeted: fromMilliunits(category.data.category.budgeted)
-        };
-    }
-  } catch (error) {
-    if (error instanceof API.ErrorResponse) {
-      return { 
-        error: error.error.detail, 
-        code: error.error.id,
-        status: error.error.status
-      };
-    }
-    return { 
-      error: "An unexpected error occurred", 
-      code: "UNKNOWN_ERROR",
-      status: 500
-    };
-  }
-}
+By following this structure and approach, we ensure a clean separation between the AI interface and core YNAB functionality, allowing for easier maintenance and future extensibility of the Raycast AI Extension for YNAB.
+
+Citations:
+[1] https://ppl-ai-file-upload.s3.amazonaws.com/web/direct-files/17003646/46a756dc-4c2e-469a-913b-60d42030d442/paste.txt
+[2] https://github.com/Meh-S-Eze/raynab/tree/feature/ai-tools
 
 ---
-title: AI Hook Integration
-description: Connect YNAB tools to Raycast AI chat
-glob: src/hooks/useRaynabAI.ts
-action: Implement AI interface
-context:
-  - raycast-ai-hook-docs
----
-
-import { useAI } from "@raycast/utils";
-import { RaynabToolSchema } from "../lib/raynab-tools";
-
-export function useRaynabAI() {
-  const { data, error, isLoading } = useAI({
-    model: "ray-1",
-    systemPrompt: `You are a YNAB budget assistant. Use standard currency format (e.g., $10.50) when discussing amounts. 
-    The system will handle conversion to YNAB's milliunit format internally. 
-    Always use YYYY-MM-DD for dates. Current date: ${new Date().toISOString().slice(0, 10)}
-    
-    When creating transactions:
-    1. Always confirm the amount and category
-    2. Use positive numbers for inflows, negative for outflows
-    3. Suggest relevant categories based on payee
-    
-    When showing budgets:
-    1. Format currency with 2 decimal places
-    2. Show available balance and activity
-    3. Highlight overspent categories`,
-    tools: Object.keys(RaynabToolSchema),
-    memory: {
-      window: 5,
-      anchors: {
-        temporal: true,
-        lastTransaction: (history) => 
-          history.findLast(h => h.role === "tool" && h.name === "create_transaction"),
-        budgetContext: (history) =>
-          history.findLast(h => h.role === "tool" && h.name === "get_budget_summary")
-      }
-    }
-  });
-
-  return { data, error, isLoading };
-}
-
----
-title: Main Command Implementation
-description: Handle AI interactions and display results
-glob: src/index.tsx
-action: Connect UI components
-context:
-  - raycast-list-components
----
-
-import { List, Toast, showToast } from "@raycast/api";
-import { useRaynabAI } from "./hooks/useRaynabAI";
-import { executeRaynabCommand } from "./lib/api";
-
-export default function Command() {
-  const { data, error, isLoading } = useRaynabAI();
-
-  const handleAction = async (toolName: string, params: any) => {
-    try {
-      const result = await executeRaynabCommand(toolName, params);
-      if (result.error) {
-        await showToast({
-          style: Toast.Style.Failure,
-          title: "Error",
-          message: result.error
-        });
-        return;
-      }
-      return result;
-    } catch (error) {
-      await showToast({
-        style: Toast.Style.Failure,
-        title: "Error",
-        message: "Failed to execute command"
-      });
-    }
-  };
-
-  return (
-    <List
-      isLoading={isLoading}
-      searchBarPlaceholder="Ask about your budget..."
-    >
-      {error ? (
-        <List.EmptyView
-          title="Error"
-          description={error.message}
-        />
-      ) : (
-        <List.Item
-          title={data || "Type to start..."}
-          actions={
-            data && (
-              <ActionPanel>
-                <Action onAction={() => handleAction(/* parsed tool and params */)} />
-              </ActionPanel>
-            )
-          }
-        />
-      )}
-    </List>
-  );
-}
-
----
-title: Package Updates
-description: Add required dependencies for AI functionality
-glob: package.json
-action: Update dependencies
----
-
-{
-  "dependencies": {
-    "zod": "^3.22.4",
-    "@raycast-ai/community": "^1.93.0",
-    "@langchain/core": "^0.1.0",
-    "date-fns": "^3.0.0",
-    "ynab": "^1.32.0"
-  }
-}
-
----
-title: Conversion Improvements
-description: Key enhancements from original implementation
-glob: docs/conversion-improvements.md
-action: Review implementation checklist
-context:
-  - original-conversion-doc
----
-
-1. Currency Handling: 
-   - Proper milliunits conversion
-   - Consistent formatting in responses
-   - Handle both inflows and outflows
-
-2. Type Safety: 
-   - Zod schemas for runtime validation
-   - TypeScript types for API responses
-   - Proper error type handling
-
-3. Error Handling:
-   - YNAB API error mapping
-   - User-friendly error messages
-   - Proper error propagation
-
-4. Memory Management:
-   - Transaction history tracking
-   - Budget context preservation
-   - Temporal anchoring
-
-5. API Integration:
-   - Reuse existing YNAB client
-   - Maintain API response structure
-   - Proper parameter mapping
+Answer from Perplexity: pplx.ai/share
