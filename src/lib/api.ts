@@ -4,6 +4,7 @@ import { displayError, isYnabError } from './errors';
 import type { Period, BudgetSummary, SaveTransaction, NewTransaction } from '@srcTypes';
 import { time } from './utils';
 import { SaveScheduledTransaction } from 'ynab';
+import { useLocalStorage } from '@raycast/utils';
 
 const { apiToken } = getPreferenceValues<Preferences>();
 const client = new ynab.API(apiToken);
@@ -139,36 +140,32 @@ export async function fetchAccounts(selectedBudgetId: string) {
   }
 }
 
-export async function fetchTransactions(selectedBudgetId: string, period: Period) {
+export async function fetchTransactions(sinceDate?: string) {
   try {
-    const transactionsResponse = await client.transactions.getTransactions(
-      selectedBudgetId,
-      time()
-        .subtract(1, period as time.ManipulateType)
-        .toISOString(),
-    );
+    const budgetResponse = await client.budgets.getBudgetById('last-used');
+    const { budget } = budgetResponse.data;
+    
+    const transactionsResponse = await client.transactions.getTransactions('last-used');
+    
     const transactions = transactionsResponse.data.transactions;
-
-    // Sorted by oldest
-    transactions.reverse();
-
-    return transactions;
+    // Filter by date if provided
+    const filteredTransactions = sinceDate 
+      ? transactions.filter(t => t.date >= sinceDate)
+      : transactions;
+    // Sort by date, newest first
+    filteredTransactions.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    
+    return {
+      transactions: filteredTransactions,
+      currency_format: budget.currency_format
+    };
   } catch (error) {
     captureException(error);
-
     if (isYnabError(error)) {
-      const { title, message } = displayError(error, 'Failed to fetch transactions');
-      await showToast({
-        style: Toast.Style.Failure,
-        title,
-        message,
-      });
+      const { message } = displayError(error, 'Failed to fetch transactions');
+      throw new Error(message);
     } else {
-      showToast({
-        style: Toast.Style.Failure,
-        title: 'Something went wrong',
-        message: error instanceof Error ? error.message : 'Unknown error',
-      });
+      throw error;
     }
   }
 }
@@ -309,9 +306,13 @@ export async function updateCategory(selectedBudgetId: string, categoryId: strin
 
 export async function getBudgetSummary() {
   try {
-    const selectedBudgetId = 'last-used';
-    const budgetResponse = await client.budgets.getBudgetById(selectedBudgetId);
+    // Always use 'last-used' which is supported by the YNAB API
+    const budgetResponse = await client.budgets.getBudgetById('last-used');
     const { months, currency_format } = budgetResponse.data.budget;
+    
+    if (!months || months.length === 0) {
+      throw new Error('No budget months found. Please make sure you have a budget set up in YNAB.');
+    }
     
     // Get current month's data
     const currentMonth = months[months.length - 1];
@@ -326,6 +327,31 @@ export async function getBudgetSummary() {
     captureException(error);
     if (isYnabError(error)) {
       const { message } = displayError(error, 'Failed to fetch budget summary');
+      throw new Error(message);
+    } else {
+      throw error;
+    }
+  }
+}
+
+export async function getCategoryBalance(categoryId: string) {
+  try {
+    const budgetResponse = await client.budgets.getBudgetById('last-used');
+    const { budget } = budgetResponse.data;
+    
+    const category = budget.categories?.find(c => c.id === categoryId);
+    if (!category) {
+      throw new Error('Category not found');
+    }
+    
+    return {
+      ...category,
+      currency_format: budget.currency_format
+    };
+  } catch (error) {
+    captureException(error);
+    if (isYnabError(error)) {
+      const { message } = displayError(error, 'Failed to fetch category balance');
       throw new Error(message);
     } else {
       throw error;

@@ -95,6 +95,8 @@
   "dependencies": {
     "@raycast/api": "^1.88.4",
     "@raycast/utils": "^1.18.1",
+    "@types/commander": "^2.12.0",
+    "commander": "^11.1.0",
     "dayjs": "^1.11.13",
     "fuse.js": "^6.5.3",
     "nanoid": "^3.2.0",
@@ -107,12 +109,16 @@
   },
   "devDependencies": {
     "@raycast/eslint-config": "^1.0.11",
-    "@types/node": "^20.17.12",
+    "@types/jest": "^29.5.12",
+    "@types/node": "^20.11.24",
     "@types/react": "^18.3.18",
     "eslint": "^8.57.1",
     "eslint-config-prettier": "^8.3.0",
+    "jest": "^29.7.0",
     "prettier": "^3.4.2",
     "react-devtools": "^5.2.0",
+    "ts-jest": "^29.1.2",
+    "ts-node": "^10.9.2",
     "typescript": "^5.7.2",
     "vitest": "^2.1.9"
   },
@@ -147,9 +153,10 @@
   "scripts": {
     "build": "ray build -e dist",
     "dev": "ray develop",
+    "cli": "ts-node scripts/cli-tool.ts",
     "fix-lint": "ray lint --fix",
     "lint": "ray lint",
     "publish": "ray publish",
-    "test": "vitest"
+    "test": "jest"
   }
 }

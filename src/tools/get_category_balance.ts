@@ -1,32 +1,62 @@
-import { z } from "zod";
 import { Tool } from "@raycast/api";
-import { RaynabToolSchema } from "../lib/raynab-tools";
-import { getPreferenceValues } from "@raycast/api";
-import * as ynab from 'ynab';
+import { getCategoryBalance } from "../lib/api";
+import { formatToReadableAmount } from "@lib/utils";
 
-const { get_category_balance } = RaynabToolSchema;
-const { selectedBudgetId, apiToken } = getPreferenceValues<{ selectedBudgetId: string; apiToken: string }>();
-const client = new ynab.API(apiToken);
+type Input = {
+  category_id: string;
+};
 
-export default async function tool(input: z.infer<typeof get_category_balance.parameters>) {
+export default async function Command(input: Input) {
   try {
-    const response = await client.categories.getMonthCategoryById(
-      selectedBudgetId || 'last-used',
-      'current',
-      input.category_id
-    );
-    return response.data.category;
-  } catch (error) {
-    if (error instanceof Error) {
-      throw new Error(`Failed to get category balance: ${error.message}`);
+    const result = await getCategoryBalance(input.category_id);
+
+    if (!result) {
+      return {
+        error: true,
+        message: "Could not retrieve category balance. Please make sure you have selected a budget in YNAB."
+      };
     }
-    throw error;
+
+    const formatAmount = (amount: number) => formatToReadableAmount({
+      amount,
+      currency: result.currency_format,
+      prefixNegativeSign: true
+    });
+
+    const icon = result.balance > 0 ? '🟢' : result.balance < 0 ? '🔴' : '⚪️';
+
+    return {
+      success: true,
+      data: {
+        categoryId: result.id,
+        name: result.name,
+        balance: formatAmount(result.balance),
+        activity: formatAmount(result.activity),
+        budgeted: formatAmount(result.budgeted)
+      },
+      message: `${icon} Category "${result.name}":
+• Balance: ${formatAmount(result.balance)}
+• Activity this month: ${formatAmount(result.activity)}
+• Budgeted: ${formatAmount(result.budgeted)}`
+    };
+  } catch (error) {
+    return {
+      error: true,
+      message: error instanceof Error ? error.message : "An unknown error occurred while fetching the category balance."
+    };
   }
 }
 
-export const confirmation: Tool.Confirmation<z.infer<typeof get_category_balance.parameters>> = async (input) => {
+export const confirmation: Tool.Confirmation<Input> = async (input) => {
+  if (!input.category_id) {
+    return {
+      error: true,
+      message: "Please provide a category ID to check the balance."
+    };
+  }
+  
   return {
-    message: `Are you sure you want to get the balance for category ${input.category_id}?`,
+    message: `Get balance for category ${input.category_id}?`,
     info: [
       { name: "Category ID", value: input.category_id }
     ]
