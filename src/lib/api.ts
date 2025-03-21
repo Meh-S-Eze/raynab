@@ -1,4 +1,21 @@
-import { captureException, getPreferenceValues, showToast, Toast } from '@raycast/api';
+// Import types from Raycast for type compatibility
+import type { Toast as RaycastToast } from '@raycast/api';
+
+// Import utilities based on environment
+const {
+  getPreferenceValues,
+  showToast,
+  captureException,
+  Toast
+}: {
+  getPreferenceValues: <T extends { apiToken: string }>(args?: any) => T;
+  showToast: (params: { title: string; message?: string; style?: RaycastToast.Style }) => void;
+  captureException: (error: unknown) => void;
+  Toast: { Style: typeof RaycastToast.Style };
+} = process.env.RAYCAST_MODE === 'false'
+  ? require('./cli-utils')
+  : require('@raycast/api');
+
 import * as ynab from 'ynab';
 import { displayError, isYnabError } from './errors';
 import type { Period, BudgetSummary, SaveTransaction, NewTransaction } from '@srcTypes';
@@ -6,7 +23,41 @@ import { time } from './utils';
 import { SaveScheduledTransaction } from 'ynab';
 import { useLocalStorage } from '@raycast/utils';
 
-const { apiToken } = getPreferenceValues<Preferences>();
+function getApiToken(): string {
+  const { apiToken } = getPreferenceValues();
+  if (!apiToken) {
+    throw new Error('YNAB API token not found');
+  }
+  return apiToken;
+}
+
+function logMessage(title: string, message?: string, style?: RaycastToast.Style) {
+  if (process.env.RAYCAST_MODE === 'false') {
+    console.log(`[${style || 'info'}] ${title}${message ? ': ' + message : ''}`);
+  } else {
+    showToast({ title, message, style });
+  }
+}
+
+function handleError(error: unknown, defaultMessage: string): never {
+  if (process.env.RAYCAST_MODE === 'false') {
+    console.error('Error:', error);
+  } else {
+    captureException(error);
+  }
+
+  if (isYnabError(error)) {
+    const { title, message } = displayError(error, defaultMessage);
+    logMessage(title, message, Toast.Style.Failure);
+    throw new Error(message);
+  } else {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    logMessage('Something went wrong', errorMessage, Toast.Style.Failure);
+    throw error;
+  }
+}
+
+const apiToken = getApiToken();
 const client = new ynab.API(apiToken);
 
 export async function fetchBudgets() {
@@ -20,21 +71,7 @@ export async function fetchBudgets() {
 
     return allBudgets;
   } catch (error) {
-    captureException(error);
-    if (isYnabError(error)) {
-      const { title, message } = displayError(error, 'Failed to fetch budgets');
-      await showToast({
-        style: Toast.Style.Failure,
-        title,
-        message,
-      });
-    } else {
-      showToast({
-        style: Toast.Style.Failure,
-        title: 'Something went wrong',
-        message: error instanceof Error ? error.message : 'Unknown error',
-      });
-    }
+    return handleError(error, 'Failed to fetch budgets');
   }
 }
 
@@ -45,22 +82,7 @@ export async function fetchBudget(selectedBudgetId: string) {
 
     return { months, currency_format };
   } catch (error) {
-    captureException(error);
-
-    if (isYnabError(error)) {
-      const { title, message } = displayError(error, 'Failed to fetch budget');
-      await showToast({
-        style: Toast.Style.Failure,
-        title,
-        message,
-      });
-    } else {
-      showToast({
-        style: Toast.Style.Failure,
-        title: 'Something went wrong',
-        message: error instanceof Error ? error.message : 'Unknown error',
-      });
-    }
+    return handleError(error, 'Failed to fetch budget');
   }
 }
 
@@ -70,22 +92,7 @@ export async function fetchCategoryGroups(selectedBudgetId: string) {
     const categoryGroups = categoriesResponse.data.category_groups;
     return categoryGroups;
   } catch (error) {
-    captureException(error);
-
-    if (isYnabError(error)) {
-      const { title, message } = displayError(error, 'Failed to fetch categories');
-      await showToast({
-        style: Toast.Style.Failure,
-        title,
-        message,
-      });
-    } else {
-      showToast({
-        style: Toast.Style.Failure,
-        title: 'Something went wrong',
-        message: error instanceof Error ? error.message : 'Unknown error',
-      });
-    }
+    return handleError(error, 'Failed to fetch categories');
   }
 }
 
@@ -95,22 +102,7 @@ export async function fetchPayees(selectedBudgetId: string) {
     const payees = payeesResponse.data.payees;
     return payees;
   } catch (error) {
-    captureException(error);
-
-    if (isYnabError(error)) {
-      const { title, message } = displayError(error, 'Failed to fetch payees');
-      await showToast({
-        style: Toast.Style.Failure,
-        title,
-        message,
-      });
-    } else {
-      showToast({
-        style: Toast.Style.Failure,
-        title: 'Something went wrong',
-        message: error instanceof Error ? error.message : 'Unknown error',
-      });
-    }
+    return handleError(error, 'Failed to fetch payees');
   }
 }
 
@@ -121,22 +113,7 @@ export async function fetchAccounts(selectedBudgetId: string) {
 
     return accounts;
   } catch (error) {
-    captureException(error);
-
-    if (isYnabError(error)) {
-      const { title, message } = displayError(error, 'Failed to fetch accounts');
-      await showToast({
-        style: Toast.Style.Failure,
-        title,
-        message,
-      });
-    } else {
-      showToast({
-        style: Toast.Style.Failure,
-        title: 'Something went wrong',
-        message: error instanceof Error ? error.message : 'Unknown error',
-      });
-    }
+    return handleError(error, 'Failed to fetch accounts');
   }
 }
 
@@ -160,13 +137,7 @@ export async function fetchTransactions(sinceDate?: string) {
       currency_format: budget.currency_format
     };
   } catch (error) {
-    captureException(error);
-    if (isYnabError(error)) {
-      const { message } = displayError(error, 'Failed to fetch transactions');
-      throw new Error(message);
-    } else {
-      throw error;
-    }
+    handleError(error, 'Failed to fetch transactions');
   }
 }
 
@@ -177,22 +148,7 @@ export async function fetchScheduledTransactions(selectedBudgetId: string) {
 
     return transactions;
   } catch (error) {
-    captureException(error);
-
-    if (isYnabError(error)) {
-      const { title, message } = displayError(error, 'Failed to fetch scheduled transactions');
-      await showToast({
-        style: Toast.Style.Failure,
-        title,
-        message,
-      });
-    } else {
-      showToast({
-        style: Toast.Style.Failure,
-        title: 'Something went wrong',
-        message: error instanceof Error ? error.message : 'Unknown error',
-      });
-    }
+    return handleError(error, 'Failed to fetch scheduled transactions');
   }
 }
 
@@ -204,14 +160,7 @@ export async function updateTransaction(selectedBudgetId: string, transactionId:
     const { transaction: updatedTransaction } = updateResponse.data;
     return updatedTransaction;
   } catch (error) {
-    captureException(error);
-
-    if (isYnabError(error)) {
-      const { message } = displayError(error, 'Failed to update transaction');
-      throw new Error(message);
-    } else {
-      throw error;
-    }
+    return handleError(error, 'Failed to update transaction');
   }
 }
 
@@ -227,14 +176,7 @@ export async function createTransaction(selectedBudgetId: string, transactionDat
 
     return createdTransaction;
   } catch (error) {
-    captureException(error);
-
-    if (isYnabError(error)) {
-      const { message } = displayError(error, 'Failed to create transaction');
-      throw new Error(message);
-    } else {
-      throw error;
-    }
+    return handleError(error, 'Failed to create transaction');
   }
 }
 
@@ -245,14 +187,7 @@ export async function deleteTransaction(selectedBudgetId: string, transactionId:
     const { transaction: deletedTransaction } = updateResponse.data;
     return deletedTransaction;
   } catch (error) {
-    captureException(error);
-
-    if (isYnabError(error)) {
-      const { message } = displayError(error, 'Failed to delete transaction');
-      throw new Error(message);
-    } else {
-      throw error;
-    }
+    return handleError(error, 'Failed to delete transaction');
   }
 }
 
@@ -269,14 +204,7 @@ export async function createScheduledTransaction(selectedBudgetId: string, trans
 
     return createdTransaction;
   } catch (error) {
-    captureException(error);
-
-    if (isYnabError(error)) {
-      const { message } = displayError(error, 'Failed to create scheduled transaction');
-      throw new Error(message);
-    } else {
-      throw error;
-    }
+    return handleError(error, 'Failed to create scheduled transaction');
   }
 }
 
@@ -293,14 +221,7 @@ export async function updateCategory(selectedBudgetId: string, categoryId: strin
     const updatedCategory = updateResponse.data;
     return updatedCategory;
   } catch (error) {
-    captureException(error);
-
-    if (isYnabError(error)) {
-      const { message } = displayError(error, 'Failed to update category');
-      throw new Error(message);
-    } else {
-      throw error;
-    }
+    return handleError(error, 'Failed to update category');
   }
 }
 
@@ -324,13 +245,7 @@ export async function getBudgetSummary() {
       currency_format
     };
   } catch (error) {
-    captureException(error);
-    if (isYnabError(error)) {
-      const { message } = displayError(error, 'Failed to fetch budget summary');
-      throw new Error(message);
-    } else {
-      throw error;
-    }
+    return handleError(error, 'Failed to fetch budget summary');
   }
 }
 
@@ -349,12 +264,6 @@ export async function getCategoryBalance(categoryId: string) {
       currency_format: budget.currency_format
     };
   } catch (error) {
-    captureException(error);
-    if (isYnabError(error)) {
-      const { message } = displayError(error, 'Failed to fetch category balance');
-      throw new Error(message);
-    } else {
-      throw error;
-    }
+    return handleError(error, 'Failed to fetch category balance');
   }
 }

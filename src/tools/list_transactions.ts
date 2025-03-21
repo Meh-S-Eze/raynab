@@ -1,8 +1,14 @@
 import { AI } from "@raycast/api";
 import { z } from "zod";
 import { fetchTransactions } from "../lib/api";
-import { formatToReadableAmount, time } from "@lib/utils";
 import type { TransactionDetail, CurrencyFormat } from "../types";
+
+// Import utils based on environment
+const utils = process.env.RAYCAST_MODE === 'false'
+  ? require('../lib/utils/cli-utils')
+  : require('../lib/utils');
+
+const { formatToReadableAmount, time } = utils;
 
 // Shared input schema for both Raycast and CLI
 const inputSchema = z.object({
@@ -29,8 +35,15 @@ function formatTransaction(transaction: TransactionDetail, currencyFormat?: Curr
 
 // Shared business logic
 async function executeListTransactions(params: z.infer<typeof inputSchema>) {
-  const { transactions, currency_format } = await fetchTransactions(params.since_date);
-  return transactions.map(t => formatTransaction(t, currency_format));
+  const result = await fetchTransactions(params.since_date);
+  if (!result) throw new Error('Failed to fetch transactions');
+  
+  const { transactions, currency_format } = result;
+  const limitedTransactions = params.limit 
+    ? transactions.slice(0, params.limit) 
+    : transactions;
+    
+  return limitedTransactions.map((t: TransactionDetail) => formatTransaction(t, currency_format));
 }
 
 // Export for both Raycast and direct usage

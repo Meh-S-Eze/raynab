@@ -1,19 +1,28 @@
 import { AI } from "@raycast/api";
 import { z } from "zod";
 import { getBudgetSummary } from "../lib/api";
-import { formatToReadableAmount } from "@lib/utils";
+
+// Import utils based on environment
+const utils = process.env.RAYCAST_MODE === 'false'
+  ? require('../lib/utils/cli-utils')
+  : require('../lib/utils');
+
+const { formatToReadableAmount } = utils;
 
 // Shared input schema for both Raycast and CLI
 const inputSchema = z.object({});
 
 // Shared business logic
 async function executeBudgetSummary() {
-  const { income, budgeted, activity } = await getBudgetSummary();
+  const result = await getBudgetSummary();
+  if (!result) throw new Error('Failed to fetch budget summary');
+  
+  const { income, budgeted, activity, currency_format } = result;
   
   return {
-    income: formatToReadableAmount({ amount: income }),
-    budgeted: formatToReadableAmount({ amount: budgeted }),
-    activity: formatToReadableAmount({ amount: activity })
+    income: formatToReadableAmount({ amount: income, currency: currency_format }),
+    budgeted: formatToReadableAmount({ amount: budgeted, currency: currency_format }),
+    activity: formatToReadableAmount({ amount: activity, currency: currency_format })
   };
 }
 
