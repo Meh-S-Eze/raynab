@@ -1,64 +1,62 @@
-import { Tool } from "@raycast/api";
+import { AI } from "@raycast/api";
+import { z } from "zod";
 import { getCategoryBalance } from "../lib/api";
 import { formatToReadableAmount } from "@lib/utils";
+import { useLocalStorage } from "@raycast/utils";
+import type { CurrencyFormat } from "../types";
 
-type Input = {
-  category_id: string;
-};
+// Shared input schema for both Raycast and CLI
+const inputSchema = z.object({
+  category_id: z.string()
+});
 
-export default async function Command(input: Input) {
-  try {
-    const result = await getCategoryBalance(input.category_id);
-
-    if (!result) {
-      return {
-        error: true,
-        message: "Could not retrieve category balance. Please make sure you have selected a budget in YNAB."
-      };
-    }
-
-    const formatAmount = (amount: number) => formatToReadableAmount({
-      amount,
-      currency: result.currency_format,
-      prefixNegativeSign: true
-    });
-
-    const icon = result.balance > 0 ? '🟢' : result.balance < 0 ? '🔴' : '⚪️';
-
-    return {
-      success: true,
-      data: {
-        categoryId: result.id,
-        name: result.name,
-        balance: formatAmount(result.balance),
-        activity: formatAmount(result.activity),
-        budgeted: formatAmount(result.budgeted)
-      },
-      message: `${icon} Category "${result.name}":
-• Balance: ${formatAmount(result.balance)}
-• Activity this month: ${formatAmount(result.activity)}
-• Budgeted: ${formatAmount(result.budgeted)}`
-    };
-  } catch (error) {
-    return {
-      error: true,
-      message: error instanceof Error ? error.message : "An unknown error occurred while fetching the category balance."
-    };
-  }
-}
-
-export const confirmation: Tool.Confirmation<Input> = async (input) => {
-  if (!input.category_id) {
-    return {
-      error: true,
-      message: "Please provide a category ID to check the balance."
-    };
-  }
+// Shared business logic
+async function executeGetCategoryBalance(params: z.infer<typeof inputSchema>) {
+  const { value: currencyFormat } = useLocalStorage<CurrencyFormat | null>("activeBudgetCurrency", null);
+  const { balance, activity, budgeted } = await getCategoryBalance(params.category_id);
   
   return {
-    message: `Get balance for category ${input.category_id}?`,
-    info: [
-      { name: "Category ID", value: input.category_id }
-    ]
+    balance: formatToReadableAmount({ amount: balance, currency: currencyFormat, prefixNegativeSign: true }),
+    activity: formatToReadableAmount({ amount: activity, currency: currencyFormat, prefixNegativeSign: true }),
+    budgeted: formatToReadableAmount({ amount: budgeted, currency: currencyFormat, prefixNegativeSign: true })
   };
-}; 
+}
+
+// Export for both Raycast and direct usage
+export async function getCategoryBalanceTool(params: z.infer<typeof inputSchema>) {
+  const validatedParams = inputSchema.parse(params);
+  const result = await executeGetCategoryBalance(validatedParams);
+  
+  return {
+    success: true,
+    message: `Category Balance:
+• Balance: ${result.balance}
+• Activity: ${result.activity}
+• Budgeted: ${result.budgeted}`,
+    data: result
+  };
+}
+
+// Raycast tool wrapper
+export default async function Command(props: z.infer<typeof inputSchema>) {
+  return getCategoryBalanceTool(props);
+}
+
+Command.schema = inputSchema;
+Command.description = "Get category balance, activity and budgeted amount";
+
+// CLI support when run directly
+if (require.main === module) {
+  const args = process.argv.slice(2);
+  const params = {
+    category_id: args[0]
+  };
+  
+  getCategoryBalanceTool(params)
+    .then(result => console.log(JSON.stringify(result, null, 2)))
+    .catch(console.error);
+}
+
+export const confirmation = async (input: z.infer<typeof inputSchema>) => ({
+  message: `Get balance for category ${input.category_id}?`
+}); 

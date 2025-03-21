@@ -157,6 +157,7 @@
     "fix-lint": "ray lint --fix",
     "lint": "ray lint",
     "publish": "ray publish",
-    "test": "jest"
+    "test": "jest",
+    "tool": "ts-node"
   }
 }

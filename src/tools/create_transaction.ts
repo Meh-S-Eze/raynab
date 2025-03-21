@@ -1,70 +1,86 @@
+import { AI } from "@raycast/api";
 import { z } from "zod";
-import { Tool } from "@raycast/api";
 import { createTransaction } from "../lib/api";
-import { RaynabToolSchema } from "../lib/raynab-tools";
-import { getPreferenceValues } from "@raycast/api";
+import { formatToReadableAmount } from "@lib/utils";
 import { useLocalStorage } from "@raycast/utils";
-import { formatToReadableAmount, formatToYnabAmount } from "@lib/utils";
-import { CurrencyFormat } from "@srcTypes";
+import type { CurrencyFormat } from "../types";
 
-const { create_transaction } = RaynabToolSchema;
-const { selectedBudgetId } = getPreferenceValues<{ selectedBudgetId: string }>();
+// Shared input schema for both Raycast and CLI
+const inputSchema = z.object({
+  amount: z.number(),
+  payee_name: z.string().optional(),
+  category_id: z.string().optional(),
+  memo: z.string().optional(),
+  date: z.string().optional()
+});
 
-export default async function tool(input: z.infer<typeof create_transaction.parameters>) {
-  try {
-    const { value: activeBudgetCurrency } = useLocalStorage<CurrencyFormat | null>('activeBudgetCurrency', null);
-    
-    // Convert amount to YNAB format
-    const ynabAmount = formatToYnabAmount(input.amount, activeBudgetCurrency);
-    
-    // Create transaction with formatted amount
-    const result = await createTransaction(selectedBudgetId, {
-      ...input,
-      amount: ynabAmount
-    });
-
-    if (!result) {
-      throw new Error('Failed to create transaction');
-    }
-
-    // Format response with proper currency formatting
-    const formattedAmount = formatToReadableAmount({
-      amount: ynabAmount,
-      currency: activeBudgetCurrency,
-      prefixNegativeSign: true
-    });
-
-    return {
-      success: true,
-      data: {
-        transactionId: result.id,
-        amount: formattedAmount,
-        approved: result.approved
-      },
-      message: `Created a ${input.amount > 0 ? 'income' : 'expense'} transaction of ${formattedAmount}`
-    };
-  } catch (error) {
-    if (error instanceof Error) {
-      throw new Error(`Failed to create transaction: ${error.message}`);
-    }
-    throw error;
+// Shared business logic
+async function executeCreateTransaction(params: z.infer<typeof inputSchema>) {
+  const { value: currencyFormat } = useLocalStorage<CurrencyFormat | null>("activeBudgetCurrency", null);
+  const transaction = await createTransaction("last-used", params);
+  
+  if (!transaction) {
+    throw new Error("Failed to create transaction");
   }
-}
-
-export const confirmation: Tool.Confirmation<z.infer<typeof create_transaction.parameters>> = async (input) => {
-  const { value: activeBudgetCurrency } = useLocalStorage<CurrencyFormat | null>('activeBudgetCurrency', null);
-  const formattedAmount = formatToReadableAmount({
-    amount: formatToYnabAmount(input.amount, activeBudgetCurrency),
-    currency: activeBudgetCurrency,
-    prefixNegativeSign: true
-  });
 
   return {
-    message: `Are you sure you want to create a transaction of ${formattedAmount} for ${input.payee}?`,
-    info: [
-      { name: "Amount", value: formattedAmount },
-      { name: "Payee", value: input.payee },
-      { name: "Date", value: input.date }
-    ]
+    id: transaction.id,
+    amount: formatToReadableAmount({ 
+      amount: transaction.amount,
+      currency: currencyFormat,
+      prefixNegativeSign: true
+    }),
+    payee: transaction.payee_name || "Unknown Payee",
+    category: transaction.category_name || "Uncategorized",
+    date: transaction.date
+  };
+}
+
+// Export for both Raycast and direct usage
+export async function createTransactionTool(params: z.infer<typeof inputSchema>) {
+  const validatedParams = inputSchema.parse(params);
+  const result = await executeCreateTransaction(validatedParams);
+  
+  return {
+    success: true,
+    message: `Created transaction: ${result.amount} to ${result.payee} on ${result.date}`,
+    data: result
+  };
+}
+
+// Raycast tool wrapper
+export default async function Command(props: z.infer<typeof inputSchema>) {
+  return createTransactionTool(props);
+}
+
+Command.schema = inputSchema;
+Command.description = "Create a new transaction with amount, payee, and category";
+
+// CLI support when run directly
+if (require.main === module) {
+  const args = process.argv.slice(2);
+  const params = {
+    amount: parseFloat(args[0]),
+    payee_name: args[1],
+    category_id: args[2],
+    memo: args[3],
+    date: args[4]
+  };
+  
+  createTransactionTool(params)
+    .then(result => console.log(JSON.stringify(result, null, 2)))
+    .catch(console.error);
+}
+
+export const confirmation = async (input: z.infer<typeof inputSchema>) => {
+  const { value: currencyFormat } = useLocalStorage<CurrencyFormat | null>("activeBudgetCurrency", null);
+  const amount = formatToReadableAmount({ 
+    amount: input.amount,
+    currency: currencyFormat,
+    prefixNegativeSign: true
+  });
+  const payee = input.payee_name || "Unknown Payee";
+  return {
+    message: `Create transaction: ${amount} to ${payee}?`
   };
 }; 

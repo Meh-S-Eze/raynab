@@ -1,52 +1,51 @@
-import { Tool } from "@raycast/api";
+import { AI } from "@raycast/api";
+import { z } from "zod";
 import { getBudgetSummary } from "../lib/api";
 import { formatToReadableAmount } from "@lib/utils";
 
-type Input = Record<string, never>; // Empty object type since this tool takes no parameters
+// Shared input schema for both Raycast and CLI
+const inputSchema = z.object({});
 
-/**
- * Get budget summary for current month
- */
-export default async function Command() {
-  try {
-    const summary = await getBudgetSummary();
-    
-    if (!summary) {
-      return {
-        error: true,
-        message: "Could not retrieve budget summary. Please make sure you have selected a budget in YNAB."
-      };
-    }
-
-    const formatAmount = (amount: number) => formatToReadableAmount({
-      amount,
-      currency: summary.currency_format,
-      prefixNegativeSign: true
-    });
-
-    return {
-      success: true,
-      data: {
-        income: formatAmount(summary.income),
-        budgeted: formatAmount(summary.budgeted),
-        activity: formatAmount(summary.activity)
-      },
-      message: `Budget Summary for Current Month:
-• Income: ${formatAmount(summary.income)}
-• Budgeted: ${formatAmount(summary.budgeted)}
-• Activity: ${formatAmount(summary.activity)}`
-    };
-  } catch (error) {
-    return {
-      error: true,
-      message: error instanceof Error ? error.message : "An unknown error occurred while fetching the budget summary."
-    };
-  }
+// Shared business logic
+async function executeBudgetSummary() {
+  const { income, budgeted, activity } = await getBudgetSummary();
+  
+  return {
+    income: formatToReadableAmount({ amount: income }),
+    budgeted: formatToReadableAmount({ amount: budgeted }),
+    activity: formatToReadableAmount({ amount: activity })
+  };
 }
 
-// Add confirmation to show what will be retrieved
-export const confirmation: Tool.Confirmation<Input> = async () => {
+// Export for both Raycast and direct usage
+export async function getBudgetSummaryTool() {
+  const data = await executeBudgetSummary();
+  
   return {
-    message: "Retrieve current month's budget summary?"
+    success: true,
+    message: `Budget Summary for Current Month:
+• Income: ${data.income}
+• Budgeted: ${data.budgeted}
+• Activity: ${data.activity}`,
+    data
   };
-}; 
+}
+
+// Raycast tool wrapper
+export default async function Command() {
+  return getBudgetSummaryTool();
+}
+
+Command.schema = inputSchema;
+Command.description = "Get budget summary showing income, budgeted amount, and activity for current month";
+
+// CLI support when run directly
+if (require.main === module) {
+  getBudgetSummaryTool()
+    .then(result => console.log(JSON.stringify(result, null, 2)))
+    .catch(console.error);
+}
+
+export const confirmation = async () => ({
+  message: "Retrieve current month's budget summary?"
+}); 

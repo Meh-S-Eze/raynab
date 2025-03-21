@@ -1,62 +1,75 @@
-import { Tool } from "@raycast/api";
+import { AI } from "@raycast/api";
+import { z } from "zod";
 import { fetchTransactions } from "../lib/api";
 import { formatToReadableAmount, time } from "@lib/utils";
-import type { TransactionDetail } from "../types";
+import type { TransactionDetail, CurrencyFormat } from "../types";
 
-type Input = {
-  since_date?: string;
-  limit?: number;
-};
+// Shared input schema for both Raycast and CLI
+const inputSchema = z.object({
+  since_date: z.string().optional(),
+  limit: z.number().optional()
+});
 
-function formatTransaction(transaction: TransactionDetail, currencyFormat: any): string {
-  const date = time(transaction.date).format('LL');
+// Format transaction for display
+function formatTransaction(transaction: TransactionDetail, currencyFormat?: CurrencyFormat | null) {
+  const date = time(transaction.date).format("MMM D");
   const amount = formatToReadableAmount({ 
-    amount: transaction.amount, 
+    amount: transaction.amount,
     currency: currencyFormat,
-    prefixNegativeSign: true 
+    prefixNegativeSign: true
   });
-  const icon = transaction.amount > 0 ? '🟢' : '🔴';
-  const payee = transaction.payee_name || 'No payee';
-  const category = transaction.category_name || 'Uncategorized';
-  const memo = transaction.memo ? ` - ${transaction.memo}` : '';
-  const status = transaction.approved ? '✓' : '⚠️';
+  const payee = transaction.payee_name || "Unknown Payee";
+  const category = transaction.category_name || "Uncategorized";
+  const memo = transaction.memo ? ` (${transaction.memo})` : "";
+  const status = transaction.cleared === "cleared" ? "✓" : "⋯";
+  const icon = transaction.amount < 0 ? "↑" : "↓";
   
   return `${icon} ${date}: ${amount} to ${payee} (${category})${memo} ${status}`;
 }
 
-export default async function Command(input: Input) {
-  try {
-    const { transactions, currency_format } = await fetchTransactions(input.since_date);
-    
-    if (!transactions || transactions.length === 0) {
-      return {
-        message: "No transactions found for the specified period.",
-        transactions: []
-      };
-    }
-    
-    const formattedTransactions = transactions
-      .slice(0, input.limit || 50)
-      .map(t => formatTransaction(t, currency_format));
-
-    return {
-      message: `Found ${formattedTransactions.length} transactions:`,
-      transactions: formattedTransactions
-    };
-  } catch (error) {
-    return {
-      error: true,
-      message: error instanceof Error ? error.message : "An unknown error occurred while fetching transactions."
-    };
-  }
+// Shared business logic
+async function executeListTransactions(params: z.infer<typeof inputSchema>) {
+  const { transactions, currency_format } = await fetchTransactions(params.since_date);
+  return transactions.map(t => formatTransaction(t, currency_format));
 }
 
-export const confirmation: Tool.Confirmation<Input> = async (input) => {
+// Export for both Raycast and direct usage
+export async function listTransactions(params: z.infer<typeof inputSchema>) {
+  const validatedParams = inputSchema.parse(params);
+  const results = await executeListTransactions(validatedParams);
+  
   return {
-    message: `List transactions${input.since_date ? ` since ${input.since_date}` : ''}?`,
-    info: [
-      input.since_date ? { name: "Since Date", value: input.since_date } : undefined,
-      input.limit ? { name: "Limit", value: input.limit.toString() } : undefined
-    ].filter(Boolean) as { name: string; value: string }[]
+    success: true,
+    message: `Found ${results.length} transactions:`,
+    transactions: results
+  };
+}
+
+// Raycast tool wrapper
+export default async function Command(props: z.infer<typeof inputSchema>) {
+  return listTransactions(props);
+}
+
+Command.schema = inputSchema;
+Command.description = "List recent transactions";
+
+// CLI support when run directly
+if (require.main === module) {
+  const args = process.argv.slice(2);
+  const params = {
+    since_date: args[0],
+    limit: args[1] ? parseInt(args[1], 10) : undefined
+  };
+  
+  listTransactions(params)
+    .then(result => console.log(JSON.stringify(result, null, 2)))
+    .catch(console.error);
+}
+
+export const confirmation = async (input: z.infer<typeof inputSchema>) => {
+  const dateStr = input.since_date || "all time";
+  const limitStr = input.limit ? ` (limited to ${input.limit} transactions)` : "";
+  return {
+    message: `List transactions since ${dateStr}${limitStr}?`
   };
 }; 

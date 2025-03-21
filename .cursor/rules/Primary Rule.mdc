@@ -3,6 +3,101 @@ description:
 globs: 
 alwaysApply: true
 ---
-ALWAYS USE EXISTING BUSINESS LOGIC DO NOT CREATE NEW FILES.  ONLY USE THIN TOOL ADAPTERS TO UTILIZE EXISTING BUSINESS LOGIC.  EVEN IF SOMETHING ELSE IS SAID IN A RULE THAT DOESN"T ALIGN WITH THAT CORE PRECEPT. 
+ALWAYS USE EXISTING BUSINESS LOGIC. Do not create new business logic in the tools.
 
-DO NOT BREAK RAYCAST FUNCTIONALITY USE CLI FOR UNIT TESTING BUT DO NOT BREAK RAYCAST.
+DO NOT CREATE NEW FILES. Work within the existing file structure.
+
+ONLY USE THIN TOOL ADAPTERS to connect the AI interface to existing business logic.
+
+MAINTAIN DUAL COMPATIBILITY: Ensure all tools function identically in both Raycast and CLI environments without any code changes.
+
+DO NOT MODIFY CLI FUNCTIONALITY. The CLI should not have any additional business logic.
+
+ENSURE SEAMLESS SWITCHING: Users should be able to make a request through Raycast and then immediately use the CLI without any changes to the codebase.
+
+Answer
+Based on standard software architecture patterns and the principles described in your project's requirements, here's how you could achieve CLI-based unit testing without breaking Raycast functionality:
+
+Core Requirements (From Your Guidelines)
+text
+1. Existing business logic must remain untouched
+2. No new business logic files
+3. Thin adapters only
+4. Dual Raycast/CLI compatibility
+Implementation Strategy
+Create CLI Test Adapters
+Add CLI-specific entry points that call the exact same tool functions used by Raycast:
+
+typescript
+// src/cli-test.ts
+#!/usr/bin/env node
+import { listTransactions } from './tools/list_transactions';
+
+const args = {
+  budget: process.argv[2],
+  sinceDate: process.argv[3]
+};
+
+listTransactions(args)
+  .then(result => console.log(JSON.stringify(result, null, 2)))
+  .catch(console.error);
+Modify Tool Implementation
+Keep Raycast-specific code isolated in conditional blocks:
+
+typescript
+// src/tools/list_transactions.ts
+export default createTool({
+  execute: async (params) => {
+    // Business logic remains unchanged
+    const transactions = await fetchExistingBusinessLogic(params);
+
+    // Raycast-specific code
+    if (process.env.RAYCAST_MODE) {
+      await showToast({ title: "Transactions fetched" }); 
+    }
+
+    return transactions;
+  }
+});
+Testing Workflow
+Test both interfaces without code changes:
+
+bash
+# Test via Raycast UI
+npm run dev
+
+# Test via CLI (same codebase)
+RAYCAST_MODE=false npm run test:cli -- --budget=main --since=2025-03-01
+Key Safety Measures
+Environment Detection
+Use process.env.RAYCAST_MODE to toggle UI components
+
+Shared Business Logic
+
+typescript
+// Reused by both interfaces
+export const fetchExistingBusinessLogic = async (params) => {
+  // Your existing implementation
+};
+Testing Strategy
+
+bash
+# Unit tests (Jest)
+npm test src/tools/list_transactions.test.ts
+
+# CLI integration test
+npm run test:cli
+
+# Raycast integration test
+npm run test:raycast
+This pattern maintains Raycast functionality while adding CLI testing capabilities through:
+
+Environment variable toggling
+
+Shared business logic reuse
+
+Thin CLI entry-points
+
+Isolation of platform-specific code
+
+The actual GitHub implementation might need adjustments based on your specific code structure, but this pattern safely achieves your requirements without breaking existing functionality.
